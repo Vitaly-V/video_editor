@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:video_trimmer/video_trimmer.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter_ffmpeg/flutter_ffmpeg.dart';
@@ -28,62 +27,142 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final Trimmer _trimmer = Trimmer();
-
-  final ImagePicker _picker = ImagePicker();
+  List<Map<String, String>> sources = [
+    {
+      'image':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerBlazes.jpg",
+      'video':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    },
+    {
+      'image':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerEscapes.jpg",
+      'video':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+    },
+    {
+      'image':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerFun.jpg",
+      'video':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+    },
+    {
+      'image':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerJoyrides.jpg",
+      'video':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+    },
+    {
+      'image':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerMeltdowns.jpg",
+      'video':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
+    },
+    {
+      'image':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/Sintel.jpg",
+      'video':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
+    },
+    {
+      'image':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/SubaruOutbackOnStreetAndDirt.jpg",
+      'video':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+    },
+    {
+      'image':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/TearsOfSteel.jpg",
+      'video':
+          "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4"
+    }
+  ];
 
   final List<String> videos = [];
+  bool _progressVisibility = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Video Editor"),
+        centerTitle: true,
+        title: Text("Happy We"),
       ),
-      body: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text('Videos added: ${videos.length}'),
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Container(
-            child: RaisedButton(
-              child: Text("LOAD VIDEO"),
-              onPressed: () async {
-                PickedFile file = await _picker.getVideo(
-                  source: ImageSource.gallery,
-                );
-                setState(() {
-                  videos.add(file.path);
-                });
-              },
-            ),
+      body: Column(children: [
+        Expanded(
+          child: GridView.count(
+            crossAxisCount: 2,
+            children: List.generate(sources.length, (index) {
+              return InkWell(
+                onTap: () {
+                  if (videos.contains(sources[index]['video'])) {
+                    videos.remove(sources[index]['video']);
+                  } else {
+                    videos.add(sources[index]['video']);
+                  }
+                  setState(() {});
+                },
+                child: Stack(children: [
+                  Container(
+                    padding: EdgeInsets.all(5),
+                    child: Image.network(sources[index]['image']),
+                  ),
+                  if (videos.contains(sources[index]['video']))
+                    Positioned(
+                        top: 10,
+                        right: 10,
+                        child: Icon(Icons.check_circle, color: Colors.green))
+                ]),
+              );
+            }),
           ),
-          SizedBox(
-            width: 10,
+        ),
+        SizedBox(
+          height: 10,
+        ),
+        Text('Selected videos: ${videos.length}'),
+        SizedBox(
+          height: 10,
+        ),
+        Visibility(
+          visible: _progressVisibility,
+          child: LinearProgressIndicator(
+            backgroundColor: Colors.red,
           ),
-          Container(
-            child: RaisedButton(
-              child: Text("PROCESS VIDEO"),
-              onPressed: () async {
-                final tempDir = await getTemporaryDirectory();
-                String rawDocumentPath = tempDir.path;
-                final outputPath = '$rawDocumentPath/output.mp4';
+        ),
+        Container(
+          child: RaisedButton(
+            child: Text("PROCESS VIDEO"),
+            onPressed: () async {
+              final tempDir = await getTemporaryDirectory();
+              String rawDocumentPath = tempDir.path;
+              final outputPath = '$rawDocumentPath/output.mp4';
 
-                final FlutterFFmpeg _flutterFFmpeg = new FlutterFFmpeg();
-
-                String commandToExecute =
-                    '-i ${videos[0]} -i ${videos[1]} -filter_complex \'[0:v][0:a][1:v][1:a]concat=n=2:v=1:a=1 [outv] [outa]\' -map \'[outv]\' -map \'[outa]\' $outputPath';
-                var rc = await _flutterFFmpeg.execute(commandToExecute);
-                print("FFmpeg process exited with rc $rc");
-                File combinedFile = File(outputPath);
-                if (combinedFile != null) {
-                  await _trimmer.loadVideo(videoFile: combinedFile);
-                  Navigator.of(context)
-                      .push(MaterialPageRoute(builder: (context) {
-                    return TrimmerView(_trimmer);
-                  }));
-                }
-              },
-            ),
+              final FlutterFFmpeg _flutterFFmpeg = new FlutterFFmpeg();
+              setState(() {
+                _progressVisibility = true;
+              });
+              String commandToExecute =
+                  '-y -i ${videos[0]} -i ${videos[1]} -preset ultrafast -r 65535/2733 -vsync 2 -filter_complex \'[0:v][0:a][1:v][1:a]concat=n=${videos.length}:v=1:a=1 [outv] [outa]\' -map \'[outv]\' -map \'[outa]\' $outputPath';
+              var rc = await _flutterFFmpeg.execute(commandToExecute);
+              setState(() {
+                _progressVisibility = false;
+              });
+              print("FFmpeg process exited with rc $rc");
+              File combinedFile = File(outputPath);
+              if (combinedFile != null) {
+                await _trimmer.loadVideo(videoFile: combinedFile);
+                Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (context) {
+                  return TrimmerView(_trimmer);
+                }));
+              }
+            },
           ),
-        ]),
+        ),
+        SizedBox(
+          height: 10,
+        ),
       ]),
     );
   }
@@ -126,7 +205,8 @@ class _TrimmerViewState extends State<TrimmerView> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Video Trimmer"),
+        centerTitle: true,
+        title: Text("Happy We"),
       ),
       body: Builder(
         builder: (context) => Center(
@@ -142,19 +222,6 @@ class _TrimmerViewState extends State<TrimmerView> {
                   child: LinearProgressIndicator(
                     backgroundColor: Colors.red,
                   ),
-                ),
-                RaisedButton(
-                  onPressed: _progressVisibility
-                      ? null
-                      : () async {
-                          _saveVideo().then((outputPath) {
-                            print('OUTPUT PATH: $outputPath');
-                            final snackBar = SnackBar(
-                                content: Text('Video Saved successfully'));
-                            Scaffold.of(context).showSnackBar(snackBar);
-                          });
-                        },
-                  child: Text("SAVE"),
                 ),
                 Expanded(
                   child: VideoViewer(),
@@ -198,7 +265,20 @@ class _TrimmerViewState extends State<TrimmerView> {
                       _isPlaying = playbackState;
                     });
                   },
-                )
+                ),
+                RaisedButton(
+                  onPressed: _progressVisibility
+                      ? null
+                      : () async {
+                          _saveVideo().then((outputPath) {
+                            print('OUTPUT PATH: $outputPath');
+                            final snackBar = SnackBar(
+                                content: Text('Video Saved successfully'));
+                            Scaffold.of(context).showSnackBar(snackBar);
+                          });
+                        },
+                  child: Text("Save video"),
+                ),
               ],
             ),
           ),
